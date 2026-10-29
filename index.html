@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Feed de curiosidades</title>
+<style>
+:root{--bg:#faf8f5;--tinta:#1d1b18;--fraca:#6b655c;--linha:#ddd6ca;--caixa:#fff;--acento:#2b5a84;--acentoTxt:#fff}
+@media(prefers-color-scheme:dark){:root{--bg:#14130f;--tinta:#e8e3d9;--fraca:#9a9387;--linha:#302c25;--caixa:#1b1a16;--acento:#7fb0dc;--acentoTxt:#10202e}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--tinta);font:17px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+.tela{display:none;max-width:34rem;margin:0 auto;padding:2.2rem 18px 4rem}
+.tela.ativa{display:block}
+h1{font-size:1.65rem;line-height:1.2;margin:0 0 .8rem}
+h2{font-size:1.25rem;line-height:1.3;margin:0 0 .6rem}
+p{margin:0 0 .9rem}
+.fraca{color:var(--fraca);font-size:.92rem}
+.caixa{background:var(--caixa);border:1px solid var(--linha);border-radius:12px;padding:14px 16px;margin:0 0 1rem}
+input[type=number],input[type=text]{width:100%;font:inherit;padding:12px 14px;border:1px solid var(--linha);border-radius:10px;background:var(--caixa);color:var(--tinta);margin:.2rem 0 .8rem}
+button{font:inherit;font-weight:600;min-height:48px;padding:12px 20px;border:0;border-radius:12px;background:var(--acento);color:var(--acentoTxt);cursor:pointer;width:100%}
+button.sec{background:transparent;color:var(--fraca);border:1px solid var(--linha);font-weight:500}
+button:disabled{opacity:.4;cursor:default}
+.erro{color:#b3261e;font-size:.92rem;min-height:1.2em;margin:0 0 .6rem}
+.opcao{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--linha);border-radius:10px;background:var(--caixa);margin:0 0 8px;cursor:pointer}
+.opcao input{margin-top:.3rem;width:20px;height:20px;flex:0 0 auto}
+.passo{font-size:.82rem;letter-spacing:.04em;text-transform:uppercase;color:var(--fraca);margin:0 0 .5rem}
+table{border-collapse:collapse;width:100%;margin:0 0 1rem}
+td{padding:8px 4px;border-bottom:1px solid var(--linha);vertical-align:top}
+td:last-child{text-align:right;font-weight:600}
+
+#feed{position:fixed;inset:0;display:none;background:#000}
+#feed.ativa{display:block}
+#rolo{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none}
+#rolo::-webkit-scrollbar{display:none}
+#rolo.travado{overflow-y:hidden}
+.card{height:100vh;height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;display:flex;flex-direction:column;justify-content:center;
+ padding:4.5rem 1.7rem 3rem;color:#fff;position:relative;
+ background:linear-gradient(165deg,hsl(var(--h) 52% 34%),hsl(calc(var(--h) + 28) 58% 20%))}
+.card .tag{align-self:flex-start;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.16);padding:4px 10px;border-radius:99px;margin-bottom:1.3rem}
+.card .emo{font-size:4.2rem;line-height:1;margin-bottom:1.1rem}
+.card h2{font-size:1.65rem;line-height:1.2;margin:0 0 .8rem;color:#fff}
+.card p{font-size:1.15rem;line-height:1.5;margin:0;color:rgba(255,255,255,.93)}
+.card .dica{position:absolute;left:0;right:0;bottom:1.4rem;text-align:center;font-size:.85rem;color:rgba(255,255,255,.7)}
+#termina{position:fixed;top:max(12px,env(safe-area-inset-top));right:12px;z-index:5;width:auto;min-height:36px;padding:6px 14px;font-size:.9rem;font-weight:500;
+ background:rgba(0,0,0,.35);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:99px;display:none}
+#feed.ativa #termina{display:block}
+
+#pausa{position:fixed;inset:0;z-index:9;background:var(--bg);color:var(--tinta);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem}
+#pausa.ativa{display:flex}
+#pausa h2{font-size:2rem;margin-bottom:.4rem}
+#pausa .n{font-size:3.4rem;font-weight:700;margin:.6rem 0 1.2rem;min-height:4rem}
+#pausa button{max-width:20rem}
+#pausa .sec{margin-top:.7rem}
+</style>
+</head>
+<body>
+
+<!-- 1. entrada -->
+<section id="t-entrada" class="tela ativa">
+  <h1>Feed de curiosidades</h1>
+  <p>Você vai rolar um feed de posts curtos, como faria no seu celular. <strong>Use do jeito que você usaria normalmente.</strong> Pode parar quando quiser tocando em <em>Terminar</em>, e a página encerra sozinha em no máximo 5 minutos.</p>
+  <p class="fraca">Depois vêm algumas perguntas rápidas. Não há resposta certa.</p>
+  <label for="num"><strong>Número que você recebeu</strong></label>
+  <input id="num" type="number" inputmode="numeric" min="1" step="1" autocomplete="off">
+  <div id="erro-num" class="erro" role="alert"></div>
+  <button id="comecar">Começar</button>
+</section>
+
+<!-- 2. feed -->
+<div id="feed">
+  <button id="termina" type="button">Terminar</button>
+  <div id="rolo"></div>
+</div>
+
+<!-- pausa -->
+<div id="pausa" role="dialog" aria-modal="true" aria-label="Pausa">
+  <h2>Pausa</h2>
+  <p class="fraca">Respire um instante. Você continua já.</p>
+  <div class="n" id="pausa-n">6</div>
+  <button id="pausa-ok" disabled>Continuar</button>
+  <button id="pausa-fim" class="sec">Terminar</button>
+</div>
+
+<!-- 3. perguntas -->
+<section id="t-q1" class="tela">
+  <p class="passo">Pergunta 1 de 4</p>
+  <h2>Quantos posts você acha que viu?</h2>
+  <p class="fraca">Um palpite. Não precisa ser exato.</p>
+  <input id="est" type="number" inputmode="numeric" min="0" step="1">
+  <div id="erro-est" class="erro" role="alert"></div>
+  <button id="q1-ok">Próxima</button>
+</section>
+
+<section id="t-q2" class="tela">
+  <p class="passo">Pergunta 2 de 4</p>
+  <h2>Do que você lembra?</h2>
+  <p class="fraca">Escreva, com as suas palavras, sobre até 4 posts que você viu. Pode deixar em branco o que não lembrar.</p>
+  <input class="livre" type="text" maxlength="160" placeholder="Post 1" autocomplete="off">
+  <input class="livre" type="text" maxlength="160" placeholder="Post 2" autocomplete="off">
+  <input class="livre" type="text" maxlength="160" placeholder="Post 3" autocomplete="off">
+  <input class="livre" type="text" maxlength="160" placeholder="Post 4" autocomplete="off">
+  <button id="q2-ok">Próxima</button>
+</section>
+
+<section id="t-q3" class="tela">
+  <p class="passo">Pergunta 3 de 4</p>
+  <h2>Você ficou mais, igual ou menos tempo do que gostaria?</h2>
+  <label class="opcao"><input type="radio" name="sent" value="menos"><span>Menos tempo do que eu queria</span></label>
+  <label class="opcao"><input type="radio" name="sent" value="igual"><span>Mais ou menos o que eu queria</span></label>
+  <label class="opcao"><input type="radio" name="sent" value="mais"><span>Mais tempo do que eu queria</span></label>
+  <div id="erro-sent" class="erro" role="alert"></div>
+  <button id="q3-ok">Próxima</button>
+</section>
+
+<section id="t-q4" class="tela">
+  <p class="passo">Pergunta 4 de 4</p>
+  <h2>Marque os posts que você viu</h2>
+  <p class="fraca">Marque só os que você acha que apareceram para você. Pode marcar quantos quiser, ou nenhum.</p>
+  <div id="lista"></div>
+  <button id="q4-ok">Ver resultado</button>
+</section>
+
+<!-- 4. resultado -->
+<section id="t-res" class="tela">
+  <h1>Resultado</h1>
+  <p class="fraca">Não existe resultado certo ou errado.</p>
+  <div class="caixa"><table id="tab"></table></div>
+  <div class="caixa" id="versao"></div>
+  <p class="fraca" id="envio"></p>
+  <button id="copiar" class="sec">Copiar meu resultado</button>
+</section>
+
+<script>
+(function(){
+"use strict";
+var CARDS = [{"e": "🐙", "t": "polvos", "h": "Polvos têm três corações", "b": "Dois bombeiam o sangue para as brânquias e um para o resto do corpo.", "c": "Natureza"}, {"e": "🦦", "t": "lontras", "h": "Lontras dão as mãos ao dormir", "b": "Fazem isso na água para não serem separadas pela correnteza.", "c": "Natureza"}, {"e": "🐘", "t": "elefantes", "h": "Alguns elefantes se reconhecem no espelho", "b": "É um dos poucos animais que já passaram em testes de autoconsciência.", "c": "Natureza"}, {"e": "🦉", "t": "corujas", "h": "Corujas não movem os olhos", "b": "Os olhos são fixos no crânio, por isso elas giram o pescoço em até cerca de 270 graus.", "c": "Natureza"}, {"e": "🐝", "t": "abelhas", "h": "Abelhas dançam para dar o endereço", "b": "A dança indica a direção e a distância das flores para as outras abelhas.", "c": "Natureza"}, {"e": "🦈", "t": "tubarões", "h": "Tubarões são mais antigos que as árvores", "b": "Eles já nadavam nos oceanos muito antes das primeiras florestas.", "c": "Natureza"}, {"e": "🐌", "t": "caracóis", "h": "Caracóis têm milhares de dentes", "b": "Ficam numa fita na língua, chamada rádula, usada para raspar o alimento.", "c": "Natureza"}, {"e": "🦒", "t": "girafas", "h": "Girafas dormem muito pouco", "b": "Em geral tiram sonecas curtas que somam poucas horas por dia.", "c": "Natureza"}, {"e": "🐧", "t": "pinguins", "h": "Pinguins-imperadores chocam o ovo nos pés", "b": "O macho carrega o ovo sob uma dobra de pele durante o inverno antártico.", "c": "Natureza"}, {"e": "🐜", "t": "formigas", "h": "Formigas formam pontes com o próprio corpo", "b": "Algumas espécies se agarram umas nas outras para atravessar vãos.", "c": "Natureza"}, {"e": "🦋", "t": "borboletas", "h": "Borboletas sentem o gosto com os pés", "b": "Receptores nas patas ajudam a identificar a planta certa para pôr os ovos.", "c": "Natureza"}, {"e": "🐋", "t": "baleias", "h": "Baleias-azuis são gigantes", "b": "Pelos registros fósseis conhecidos, são os maiores animais que já viveram.", "c": "Natureza"}, {"e": "🦘", "t": "cangurus", "h": "Cangurus têm dificuldade de andar para trás", "b": "A forma da cauda e das pernas faz o movimento ser muito difícil.", "c": "Natureza"}, {"e": "🐢", "t": "tartarugas", "h": "Tartarugas-marinhas voltam ao lugar onde nasceram", "b": "Muitas fêmeas retornam à região de origem para desovar.", "c": "Natureza"}, {"e": "🌵", "t": "cactos", "h": "Cactos guardam água no corpo", "b": "Os caules grossos armazenam água para os longos períodos de seca.", "c": "Natureza"}, {"e": "🍄", "t": "fungos", "h": "Fungos são mais parecidos com animais que com plantas", "b": "Geneticamente, os dois grupos compartilham um ancestral mais recente.", "c": "Natureza"}, {"e": "🌳", "t": "sequoias", "h": "Sequoias passam de cem metros", "b": "As maiores árvores vivas ficam na Califórnia e podem viver milhares de anos.", "c": "Natureza"}, {"e": "🦎", "t": "camaleões", "h": "Camaleões mexem os olhos de forma independente", "b": "Cada olho pode olhar numa direção, o que amplia o campo de visão.", "c": "Natureza"}, {"e": "🐦", "t": "beija-flores", "h": "Beija-flores batem as asas dezenas de vezes por segundo", "b": "Isso permite que fiquem parados no ar diante de uma flor.", "c": "Natureza"}, {"e": "🦇", "t": "morcegos", "h": "Morcegos usam ecolocalização", "b": "Emitem sons e ouvem o eco para se orientar no escuro.", "c": "Natureza"}, {"e": "🐠", "t": "peixes-palhaço", "h": "Peixes-palhaço vivem em anêmonas", "b": "Um muco especial os ajuda a conviver com as células urticantes da anêmona.", "c": "Natureza"}, {"e": "🦩", "t": "flamingos", "h": "Flamingos são rosados por causa da comida", "b": "Pigmentos das algas e dos crustáceos que comem dão cor às penas.", "c": "Natureza"}, {"e": "🐕", "t": "cachorros", "h": "Cães têm um olfato muito mais fino que o nosso", "b": "Seu nariz tem uma quantidade enorme de receptores de cheiro.", "c": "Natureza"}, {"e": "🐈", "t": "gatos", "h": "Gatos ronronam por vários motivos", "b": "Ronronam quando estão contentes, mas também quando estão estressados ou com dor.", "c": "Natureza"}, {"e": "🌊", "t": "marés", "h": "A Lua puxa as marés", "b": "A atração gravitacional da Lua, somada à do Sol, move a água dos oceanos.", "c": "Natureza"}, {"e": "🌋", "t": "vulcões", "h": "Vulcões podem criar ilhas", "b": "O Havaí se formou pela lava de vulcões que cresceram do fundo do mar.", "c": "Natureza"}, {"e": "❄️", "t": "flocos de neve", "h": "Flocos de neve têm seis lados", "b": "A estrutura do cristal de gelo favorece a simetria hexagonal.", "c": "Natureza"}, {"e": "🌈", "t": "arco-íris", "h": "O arco-íris é um círculo", "b": "Do chão vemos só um arco, mas de um avião às vezes dá para ver o círculo inteiro.", "c": "Natureza"}, {"e": "⚡", "t": "raios", "h": "Um raio é mais quente que a superfície do Sol", "b": "O canal do raio atinge temperaturas altíssimas por frações de segundo.", "c": "Natureza"}, {"e": "🌙", "t": "eclipses", "h": "Eclipses solares são uma coincidência", "b": "A Lua e o Sol parecem ter quase o mesmo tamanho vistos da Terra.", "c": "Natureza"}, {"e": "🪐", "t": "saturno", "h": "Saturno é menos denso que a água", "b": "Numa banheira gigante o bastante, ele boiaria.", "c": "Espaço"}, {"e": "🌞", "t": "sol", "h": "A luz do Sol leva cerca de oito minutos para chegar", "b": "É o tempo que ela demora para cruzar a distância até a Terra.", "c": "Espaço"}, {"e": "🚀", "t": "foguetes", "h": "Foguetes carregam mais combustível que carga", "b": "A maior parte da massa na decolagem é propelente.", "c": "Espaço"}, {"e": "🔭", "t": "telescópios", "h": "Olhar longe é olhar o passado", "b": "A luz de galáxias distantes saiu delas há milhões de anos.", "c": "Espaço"}, {"e": "🌌", "t": "via láctea", "h": "A Via Láctea tem centenas de bilhões de estrelas", "b": "Nossa galáxia é só uma entre incontáveis outras.", "c": "Espaço"}, {"e": "🌕", "t": "lua", "h": "A Lua se afasta da Terra aos poucos", "b": "Mede-se um afastamento de alguns centímetros por ano.", "c": "Espaço"}, {"e": "☄️", "t": "cometas", "h": "Cometas têm cauda por causa do Sol", "b": "O calor vaporiza o gelo e o vento solar empurra o material para longe.", "c": "Espaço"}, {"e": "🛰️", "t": "satélites", "h": "Satélites mantêm o GPS funcionando", "b": "Seus sinais permitem que o celular calcule onde você está.", "c": "Espaço"}, {"e": "🔴", "t": "marte", "h": "Marte parece vermelho por causa da ferrugem", "b": "O solo é rico em óxidos de ferro.", "c": "Espaço"}, {"e": "🧑‍🚀", "t": "astronautas", "h": "Astronautas ficam mais altos no espaço", "b": "Sem gravidade, a coluna se estica um pouco, e depois eles voltam ao normal.", "c": "Espaço"}, {"e": "🕳️", "t": "buracos negros", "h": "Nem a luz escapa de um buraco negro", "b": "Dentro do horizonte de eventos a gravidade é forte demais.", "c": "Espaço"}, {"e": "🌍", "t": "planeta terra", "h": "A Terra não é uma esfera perfeita", "b": "É um pouco achatada nos polos e mais larga no equador.", "c": "Espaço"}, {"e": "🧠", "t": "cérebro", "h": "O cérebro gasta cerca de um quinto da energia do corpo", "b": "Ele pesa pouco, mas consome muito.", "c": "Corpo"}, {"e": "😴", "t": "sono", "h": "Dormir ajuda a fixar memórias", "b": "Durante o sono o cérebro reorganiza o que foi aprendido no dia.", "c": "Corpo"}, {"e": "👃", "t": "olfato", "h": "O cheiro está muito ligado à memória", "b": "Um aroma pode trazer de volta uma lembrança de muitos anos atrás.", "c": "Corpo"}, {"e": "🦴", "t": "ossos", "h": "Bebês nascem com mais ossos que adultos", "b": "Vários ossos se fundem ao longo do crescimento.", "c": "Corpo"}, {"e": "💓", "t": "coração", "h": "O coração não para a vida inteira", "b": "Bombeia sangue por todo o corpo desde antes do nascimento.", "c": "Corpo"}, {"e": "👁️", "t": "olhos", "h": "Os olhos se adaptam ao escuro", "b": "Em poucos minutos as pupilas se abrem e passamos a enxergar melhor.", "c": "Corpo"}, {"e": "🦷", "t": "dentes", "h": "O esmalte é o tecido mais duro do corpo", "b": "Mesmo assim, ele não se regenera sozinho.", "c": "Corpo"}, {"e": "💧", "t": "hidratação", "h": "A sede aparece depois que o corpo já começou a perder água", "b": "Por isso é bom beber água ao longo do dia.", "c": "Corpo"}, {"e": "🤧", "t": "espirro", "h": "O espirro é um reflexo de limpeza", "b": "O corpo expulsa o que irritou o nariz com uma rajada de ar.", "c": "Corpo"}, {"e": "🦵", "t": "músculos", "h": "O corpo tem mais de seiscentos músculos", "b": "Contando todos, o número passa disso.", "c": "Corpo"}, {"e": "🫁", "t": "pulmões", "h": "Respiramos milhares de vezes por dia", "b": "Quase sempre sem perceber.", "c": "Corpo"}, {"e": "🧬", "t": "dna", "h": "Quase todo o DNA é igual entre duas pessoas", "b": "As diferenças são uma parcela muito pequena.", "c": "Corpo"}, {"e": "🏃", "t": "caminhada", "h": "Caminhar ajuda a pensar", "b": "Estudos associam caminhar a mais ideias criativas.", "c": "Corpo"}, {"e": "🥱", "t": "bocejo", "h": "Bocejar é contagioso", "b": "Ver alguém bocejar aumenta a chance de você bocejar também.", "c": "Corpo"}, {"e": "🏺", "t": "egito", "h": "Os egípcios usavam um calendário de 365 dias", "b": "Dividiam o ano em 12 meses de 30 dias, mais 5 dias extras.", "c": "História"}, {"e": "🔺", "t": "pirâmides", "h": "As pirâmides de Gizé têm mais de quatro mil anos", "b": "A Grande Pirâmide foi construída por volta de 2.500 a.C.", "c": "História"}, {"e": "🏛️", "t": "olimpíadas", "h": "Os Jogos Olímpicos nasceram na Grécia antiga", "b": "Eram realizados em Olímpia, em honra a Zeus.", "c": "História"}, {"e": "🗿", "t": "ilha de páscoa", "h": "A Ilha de Páscoa tem quase novecentas estátuas", "b": "São os moai, esculpidos pelo povo rapa nui.", "c": "História"}, {"e": "📜", "t": "papel", "h": "O papel surgiu na China", "b": "A técnica se espalhou pelo mundo ao longo de séculos.", "c": "História"}, {"e": "⚓", "t": "navegação antiga", "h": "Navegadores antigos se guiavam pelas estrelas", "b": "Olhar o céu ajudava a manter a direção em alto-mar.", "c": "História"}, {"e": "🏰", "t": "castelos", "h": "Castelos eram feitos para defender", "b": "Muralhas, torres e fossos ajudavam a conter ataques.", "c": "História"}, {"e": "🖨️", "t": "prensa de gutenberg", "h": "A prensa de Gutenberg espalhou livros pela Europa", "b": "Imprimir com tipos móveis deixou os livros mais baratos.", "c": "História"}, {"e": "🕰️", "t": "relógios", "h": "Os primeiros relógios mecânicos ficavam em torres", "b": "Apareceram em igrejas da Europa medieval.", "c": "História"}, {"e": "🎭", "t": "teatro grego", "h": "O teatro grego separou comédia e tragédia", "b": "Os dois gêneros viraram base de muita narrativa depois.", "c": "História"}, {"e": "🥁", "t": "samba", "h": "O samba tem raízes na cultura afro-brasileira", "b": "Desenvolveu-se no Rio de Janeiro a partir de tradições trazidas por africanos.", "c": "História"}, {"e": "🎉", "t": "carnaval", "h": "O carnaval de rua cresce todo ano no Brasil", "b": "Blocos reúnem multidões em várias cidades.", "c": "História"}, {"e": "🗺️", "t": "mapas antigos", "h": "Mapas antigos traziam monstros marinhos", "b": "Cartógrafos desenhavam criaturas em regiões pouco conhecidas.", "c": "História"}, {"e": "🏔️", "t": "everest", "h": "O Everest cresce alguns milímetros por ano", "b": "O encontro das placas tectônicas continua empurrando o Himalaia.", "c": "História"}, {"e": "🎨", "t": "renascimento", "h": "O Renascimento misturou arte e ciência", "b": "Artistas como Leonardo estudavam anatomia e perspectiva.", "c": "História"}, {"e": "🧭", "t": "bússola", "h": "A bússola ajudou as grandes navegações", "b": "Ela aponta para o norte magnético da Terra.", "c": "História"}, {"e": "🏯", "t": "japão", "h": "O Japão tem milhares de ilhas", "b": "São mais de seis mil, embora a maioria seja pequena.", "c": "História"}, {"e": "🌐", "t": "internet", "h": "A internet nasceu como projeto de pesquisa", "b": "Começou ligando poucos computadores de universidades.", "c": "História"}, {"e": "📻", "t": "rádio", "h": "O rádio chegou às casas do mundo no século 20", "b": "Foi por décadas o principal meio de notícias e música.", "c": "História"}, {"e": "🏹", "t": "arco e flecha", "h": "O arco é uma das armas mais antigas", "b": "Seu uso aparece em registros de muitos milhares de anos.", "c": "História"}, {"e": "🍰", "t": "rocambole", "h": "Rocambole é um bolo enrolado", "b": "A massa fina recebe recheio e é enrolada para ser fatiada em espirais.", "c": "Comida"}, {"e": "🍫", "t": "chocolate", "h": "O chocolate vem de sementes de cacau", "b": "As sementes são fermentadas, secas e torradas antes de virar chocolate.", "c": "Comida"}, {"e": "🍯", "t": "mel", "h": "O mel quase não estraga", "b": "Pouca água e acidez dificultam a vida dos microrganismos.", "c": "Comida"}, {"e": "🍅", "t": "tomate", "h": "Tomate é botanicamente uma fruta", "b": "Na cozinha, porém, costuma ser tratado como legume.", "c": "Comida"}, {"e": "🌶️", "t": "pimentas", "h": "A ardência da pimenta vem da capsaicina", "b": "Ela ativa na língua os receptores sensíveis ao calor.", "c": "Comida"}, {"e": "🍞", "t": "pão", "h": "O pão cresce graças ao fermento", "b": "Microrganismos produzem gás que forma bolhas na massa.", "c": "Comida"}, {"e": "☕", "t": "café", "h": "O café é uma das bebidas mais consumidas do mundo", "b": "Os grãos são sementes de um fruto parecido com cereja.", "c": "Comida"}, {"e": "🧀", "t": "queijos", "h": "Existem centenas de tipos de queijo", "b": "A diferença vem do leite, do fungo e do tempo de maturação.", "c": "Comida"}, {"e": "🍚", "t": "arroz", "h": "O arroz está no prato de bilhões de pessoas", "b": "É base da alimentação em vários continentes.", "c": "Comida"}, {"e": "🍌", "t": "bananas", "h": "A bananeira não é uma árvore", "b": "Tecnicamente é uma grande erva, e o que parece tronco são folhas enroladas.", "c": "Comida"}, {"e": "🥑", "t": "abacate", "h": "O abacate amadurece depois de colhido", "b": "Por isso costuma ficar na bancada até amolecer.", "c": "Comida"}, {"e": "🍕", "t": "pizza", "h": "A pizza moderna nasceu em Nápoles", "b": "A versão com tomate e mussarela virou símbolo da cidade.", "c": "Comida"}, {"e": "🧂", "t": "sal", "h": "O sal já foi muito valioso", "b": "Servia para conservar alimentos antes da geladeira.", "c": "Comida"}, {"e": "🍉", "t": "melancia", "h": "Melancia é quase toda água", "b": "Mais de noventa por cento da fruta é água.", "c": "Comida"}, {"e": "🥜", "t": "amendoim", "h": "O amendoim cresce debaixo da terra", "b": "A planta enterra as flores fecundadas e as vagens se formam no solo.", "c": "Comida"}, {"e": "🍵", "t": "chá", "h": "Chá preto, verde e branco vêm da mesma planta", "b": "O que muda é o modo de preparo das folhas.", "c": "Comida"}, {"e": "💻", "t": "computadores", "h": "Os primeiros computadores ocupavam salas inteiras", "b": "Hoje um celular faz muito mais e cabe num bolso.", "c": "Tecnologia"}, {"e": "🔋", "t": "baterias", "h": "Baterias de celular perdem capacidade com o uso", "b": "Cada ciclo de carga desgasta um pouco as células.", "c": "Tecnologia"}, {"e": "📡", "t": "wifi", "h": "O wi-fi usa ondas de rádio", "b": "Elas levam dados entre o roteador e os aparelhos.", "c": "Tecnologia"}, {"e": "🔐", "t": "senhas", "h": "Senhas longas são mais seguras que curtas e complicadas", "b": "Frases extensas são difíceis de adivinhar e mais fáceis de lembrar.", "c": "Tecnologia"}, {"e": "🤖", "t": "robôs", "h": "A palavra robô vem do tcheco", "b": "Foi usada pela primeira vez numa peça de teatro de 1920.", "c": "Tecnologia"}, {"e": "🕹️", "t": "videogames", "h": "Os videogames têm mais de cinquenta anos de história", "b": "Do Pong aos jogos de hoje, a indústria cresceu muito.", "c": "Tecnologia"}, {"e": "📷", "t": "câmeras", "h": "A câmera escura é anterior à fotografia", "b": "A luz entrando por um furo projetava imagens invertidas numa parede.", "c": "Tecnologia"}, {"e": "💾", "t": "disquetes", "h": "O ícone de salvar é um disquete", "b": "Muita gente nunca viu um de verdade.", "c": "Tecnologia"}, {"e": "🔍", "t": "buscadores", "h": "Buscadores indexam bilhões de páginas", "b": "Robôs visitam sites e guardam o que encontram.", "c": "Tecnologia"}, {"e": "📱", "t": "smartphones", "h": "Um smartphone tem sensores de movimento", "b": "O acelerômetro percebe quando você vira a tela.", "c": "Tecnologia"}, {"e": "🎧", "t": "fones", "h": "Fones com cancelamento de ruído usam som contra som", "b": "Um microfone capta o ruído e o aparelho emite uma onda que o anula.", "c": "Tecnologia"}, {"e": "🖥️", "t": "monitores", "h": "Telas usam três cores para formar todas as outras", "b": "Vermelho, verde e azul se combinam em cada ponto.", "c": "Tecnologia"}, {"e": "☁️", "t": "nuvem", "h": "A nuvem são computadores de outra pessoa", "b": "Seus arquivos ficam guardados em servidores espalhados pelo mundo.", "c": "Tecnologia"}, {"e": "⌨️", "t": "teclado", "h": "O teclado QWERTY vem das máquinas de escrever", "b": "A disposição das letras foi herdada de aparelhos antigos.", "c": "Tecnologia"}, {"e": "🎸", "t": "guitarra", "h": "A guitarra elétrica mudou a música popular", "b": "Amplificadores permitiram sons que o violão não alcançava.", "c": "Música"}, {"e": "🎹", "t": "piano", "h": "O piano tem 88 teclas", "b": "Elas cobrem mais de sete oitavas.", "c": "Música"}, {"e": "🎼", "t": "ópera", "h": "Ópera mistura música, teatro e cenário", "b": "Surgiu na Itália há mais de quatrocentos anos.", "c": "Música"}, {"e": "🪘", "t": "tambores", "h": "Tambores existem em culturas do mundo todo", "b": "Servem para festa, comunicação e ritual.", "c": "Música"}, {"e": "🎤", "t": "karaokê", "h": "O karaokê nasceu no Japão", "b": "A palavra junta \"vazio\" e \"orquestra\".", "c": "Música"}, {"e": "🎻", "t": "violino", "h": "Um violino tem quatro cordas", "b": "São afinadas em quintas.", "c": "Música"}, {"e": "🎬", "t": "cinema", "h": "Os primeiros filmes eram mudos", "b": "Músicos tocavam ao vivo durante as sessões.", "c": "Música"}, {"e": "🏃‍♀️", "t": "maratona", "h": "A maratona tem pouco mais de 42 km", "b": "A distância oficial é de 42,195 km.", "c": "Esporte"}, {"e": "⚽", "t": "futebol", "h": "O futebol é praticado em quase todos os países", "b": "É considerado o esporte mais popular do planeta.", "c": "Esporte"}, {"e": "🏀", "t": "basquete", "h": "O basquete foi criado para treinar no inverno", "b": "Um professor inventou o jogo em 1891, nos Estados Unidos.", "c": "Esporte"}, {"e": "🏊", "t": "natação", "h": "A água oferece resistência ao movimento", "b": "Por isso nadar exige tanto esforço dos músculos.", "c": "Esporte"}, {"e": "🏄", "t": "surfe", "h": "Surfar nasceu na Polinésia", "b": "O esporte foi levado depois ao Havaí e ao mundo.", "c": "Esporte"}, {"e": "🧗", "t": "escalada", "h": "A escalada virou esporte olímpico", "b": "Estreou nos Jogos de Tóquio.", "c": "Esporte"}, {"e": "♟️", "t": "xadrez", "h": "No xadrez, o número de partidas possíveis é astronômico", "b": "Depois de poucas jogadas, as combinações já se multiplicam demais.", "c": "Esporte"}, {"e": "🎲", "t": "dados", "h": "Dados são muito antigos", "b": "Foram encontrados exemplares com milhares de anos.", "c": "Esporte"}, {"e": "🥋", "t": "judô", "h": "O judô nasceu no Japão no século 19", "b": "Seu criador queria um método de educação física e mental.", "c": "Esporte"}, {"e": "🏓", "t": "tênis de mesa", "h": "O tênis de mesa pede reflexos rápidos", "b": "A bolinha cruza a mesa em frações de segundo.", "c": "Esporte"}, {"e": "🎳", "t": "boliche", "h": "Boliche tem dez pinos", "b": "Eles ficam dispostos em triângulo.", "c": "Esporte"}, {"e": "😅", "t": "segunda-feira", "h": "Segunda-feira", "b": "O fim de semana acabou antes de eu combinar com ele que podia durar mais.", "c": "Humor"}, {"e": "🛌", "t": "despertador", "h": "O botão soneca", "b": "Todo dia prometo levantar no primeiro toque. Todo dia eu minto para mim mesmo.", "c": "Humor"}, {"e": "📶", "t": "sinal fraco", "h": "Sinal fraco", "b": "O wi-fi de casa funciona perfeitamente até o exato momento em que eu preciso dele.", "c": "Humor"}, {"e": "🔌", "t": "carregador", "h": "Carregador", "b": "Sempre falta um carregador, e sempre é o do lugar onde eu estou.", "c": "Humor"}, {"e": "🧦", "t": "meias", "h": "Meias", "b": "Toda lavagem manda uma meia para um universo paralelo.", "c": "Humor"}, {"e": "🛒", "t": "lista de compras", "h": "Lista de compras", "b": "Entrei para comprar leite e saí com tudo, menos o leite.", "c": "Humor"}, {"e": "📚", "t": "véspera de prova", "h": "Véspera de prova", "b": "A vontade de arrumar o quarto aparece exatamente na véspera da prova.", "c": "Humor"}, {"e": "🍳", "t": "receita", "h": "Receita", "b": "A receita diz dez minutos. Na prática: uma hora e a pia lotada.", "c": "Humor"}, {"e": "🧊", "t": "geladeira", "h": "Geladeira", "b": "Abri a geladeira três vezes. Nada mudou entre uma abertura e outra.", "c": "Humor"}, {"e": "🚌", "t": "ônibus", "h": "Ônibus", "b": "Ele sempre passa no minuto em que acabei de me afastar do ponto.", "c": "Humor"}, {"e": "🌧️", "t": "chuva", "h": "Chuva", "b": "Começa sempre quando eu decido que não preciso de guarda-chuva.", "c": "Humor"}, {"e": "🪴", "t": "plantas", "h": "Plantas", "b": "Comprei uma planta \"fácil de cuidar\". Ela discorda.", "c": "Humor"}, {"e": "🛋️", "t": "sofá", "h": "Sofá", "b": "Sentei só um minuto. Quando vi, tinha passado uma temporada inteira de série.", "c": "Humor"}, {"e": "🕐", "t": "pontualidade", "h": "Pontualidade", "b": "Chego cedo no que não importa e atrasado no que importa.", "c": "Humor"}, {"e": "🎮", "t": "última partida", "h": "Só mais uma partida", "b": "A partida \"só mais uma\" já ocupou a madrugada inteira.", "c": "Humor"}, {"e": "🍕", "t": "pedir comida", "h": "Pedir comida", "b": "Passar vinte minutos escolhendo e acabar pedindo o de sempre.", "c": "Humor"}, {"e": "📝", "t": "lista de tarefas", "h": "Lista de tarefas", "b": "Adicionei \"fazer a lista\" à lista e já risquei. Produtividade.", "c": "Humor"}, {"e": "🚿", "t": "ideias no banho", "h": "Ideias no banho", "b": "As melhores ideias do dia aparecem no banho e somem na toalha.", "c": "Humor"}, {"e": "🔎", "t": "chaves perdidas", "h": "Chaves", "b": "Estavam no último lugar em que procurei. Como sempre.", "c": "Humor"}, {"e": "🐶", "t": "cachorro carente", "h": "Cachorro", "b": "O cachorro só quer atenção na hora em que eu abro o computador.", "c": "Humor"}, {"e": "🎵", "t": "música na cabeça", "h": "Música na cabeça", "b": "Sei a letra inteira de uma música de que nem gosto.", "c": "Humor"}, {"e": "☀️", "t": "domingo à noite", "h": "Domingo à noite", "b": "O domingo é um dia inteiro que termina com uma pequena crise.", "c": "Humor"}, {"e": "🧴", "t": "filtro solar", "h": "Filtro solar", "b": "Passei em tudo, menos nas costas. Claro.", "c": "Humor"}, {"e": "💤", "t": "cochilo", "h": "Cochilo", "b": "Dormir vinte minutos e acordar sem saber o dia, o mês ou o próprio nome.", "c": "Humor"}, {"e": "🥱", "t": "reunião longa", "h": "Reunião", "b": "Aquela reunião poderia ter sido uma mensagem de duas linhas.", "c": "Humor"}, {"e": "🍝", "t": "macarrão", "h": "Macarrão", "b": "A água só ferve quando eu desisto de ficar olhando.", "c": "Humor"}, {"e": "🪞", "t": "provador", "h": "Espelho do provador", "b": "A luz do provador sempre mente, para um lado ou para o outro.", "c": "Humor"}, {"e": "📦", "t": "encomenda", "h": "Encomenda", "b": "O rastreio diz \"saiu para entrega\" há três dias.", "c": "Humor"}, {"e": "🔊", "t": "vizinho", "h": "Vizinho", "b": "O vizinho só descobre a furadeira no domingo de manhã.", "c": "Humor"}, {"e": "🧘", "t": "respiração", "h": "Respirar fundo acalma", "b": "Inspirar devagar e soltar o ar ainda mais devagar ajuda a reduzir a tensão.", "c": "Dica"}, {"e": "🚰", "t": "água na mesa", "h": "Tenha água por perto", "b": "Ter uma garrafa à vista ajuda a lembrar de beber.", "c": "Dica"}, {"e": "📖", "t": "leitura", "h": "Leia dez minutos por dia", "b": "Pequenas doses diárias somam muitos livros no ano.", "c": "Dica"}, {"e": "🌅", "t": "luz da manhã", "h": "Luz natural pela manhã", "b": "Ajuda a regular o relógio biológico.", "c": "Dica"}, {"e": "🧹", "t": "organização", "h": "Arrume por cinco minutos", "b": "Pouco tempo por dia evita a bagunça acumulada.", "c": "Dica"}, {"e": "💰", "t": "poupar", "h": "Guarde um pouco no começo do mês", "b": "Separar antes de gastar facilita a economia.", "c": "Dica"}, {"e": "🍎", "t": "lanche", "h": "Frutas como lanche", "b": "São práticas e saciam mais que muitos industrializados.", "c": "Dica"}, {"e": "✍️", "t": "escrita", "h": "Escrever ajuda a organizar ideias", "b": "Colocar no papel esclarece o que parecia confuso.", "c": "Dica"}, {"e": "🔁", "t": "revisão", "h": "Revise o que estudou no dia seguinte", "b": "Revisitar logo depois ajuda a fixar o conteúdo.", "c": "Dica"}, {"e": "🚶", "t": "pausas ativas", "h": "Levante a cada hora", "b": "Esticar as pernas alivia o corpo parado.", "c": "Dica"}, {"e": "🪥", "t": "escovação", "h": "Escove os dentes por dois minutos", "b": "É o tempo recomendado para limpar bem.", "c": "Dica"}, {"e": "📅", "t": "planejamento", "h": "Planeje o dia anterior", "b": "Saber a primeira tarefa reduz a indecisão de manhã.", "c": "Dica"}, {"e": "🎒", "t": "mala", "h": "Faça a mala em camadas", "b": "Dobrar em rolos e separar por tipo economiza espaço.", "c": "Dica"}, {"e": "🔦", "t": "pilhas", "h": "Tire as pilhas de aparelhos parados", "b": "Elas podem vazar e estragar o equipamento.", "c": "Dica"}, {"e": "🧽", "t": "louça de molho", "h": "Deixe a louça de molho", "b": "Facilita muito tirar a gordura.", "c": "Dica"}, {"e": "🗣️", "t": "oratória", "h": "Fale mais devagar", "b": "Pausas curtas dão tempo de o público acompanhar.", "c": "Dica"}, {"e": "🎓", "t": "ensinar", "h": "Ensinar fixa o que você sabe", "b": "Explicar para alguém revela o que ainda não ficou claro.", "c": "Dica"}, {"e": "🎶", "t": "música para estudar", "h": "Música sem letra para estudar", "b": "Muita gente se distrai menos sem palavras.", "c": "Dica"}, {"e": "📸", "t": "fotos", "h": "Boa luz melhora qualquer foto", "b": "Perto de uma janela, o resultado costuma ser melhor.", "c": "Dica"}, {"e": "🧪", "t": "ponto de ebulição", "h": "A água ferve em temperaturas diferentes", "b": "Quanto mais alto o lugar, menor a temperatura de fervura.", "c": "Ciência"}, {"e": "🔬", "t": "bactérias", "h": "Há muitas bactérias no seu corpo", "b": "Muitas vivem em nós sem causar mal e ajudam na digestão.", "c": "Ciência"}, {"e": "🧲", "t": "ímãs", "h": "Ímãs têm sempre dois polos", "b": "Cada pedaço de um ímã quebrado ganha novos dois polos.", "c": "Ciência"}, {"e": "🔥", "t": "fogo", "h": "Fogo precisa de oxigênio", "b": "Sem ele, a combustão não continua.", "c": "Ciência"}, {"e": "🌬️", "t": "vento", "h": "O vento nasce de diferenças de temperatura", "b": "O ar quente sobe e o ar frio ocupa o lugar.", "c": "Ciência"}, {"e": "💎", "t": "diamantes", "h": "Diamantes são feitos de carbono", "b": "O mesmo elemento do grafite do lápis, em outra estrutura.", "c": "Ciência"}, {"e": "⚖️", "t": "gelo", "h": "Gelo flutua na água", "b": "Ao congelar, a água ocupa mais espaço e fica menos densa.", "c": "Ciência"}, {"e": "🎆", "t": "fogos de artifício", "h": "Fogos de artifício ganham cor de metais", "b": "Cada metal queimado produz uma cor diferente.", "c": "Ciência"}, {"e": "🧮", "t": "zero", "h": "O zero foi uma invenção importante", "b": "Várias culturas usaram a ideia de formas diferentes.", "c": "Ciência"}, {"e": "📐", "t": "número pi", "h": "O número pi tem infinitas casas decimais", "b": "Ele nunca termina e nunca se repete.", "c": "Ciência"}, {"e": "⏳", "t": "dia na terra", "h": "Um dia na Terra já foi mais curto", "b": "Há milhões de anos, a rotação do planeta era mais rápida.", "c": "Ciência"}, {"e": "🌱", "t": "sementes", "h": "Sementes podem esperar anos para brotar", "b": "Aguardam as condições certas de água e calor.", "c": "Ciência"}, {"e": "🪨", "t": "rochas", "h": "Rochas se transformam com o tempo", "b": "Calor e pressão mudam um tipo de rocha em outro.", "c": "Ciência"}, {"e": "🌫️", "t": "neblina", "h": "Neblina é uma nuvem no chão", "b": "São gotículas de água suspensas perto da superfície.", "c": "Ciência"}, {"e": "🏜️", "t": "saara", "h": "O Saara já foi bem mais verde", "b": "Há milhares de anos teve lagos e vegetação.", "c": "Ciência"}, {"e": "🏝️", "t": "corais", "h": "Recifes de coral abrigam muita vida", "b": "Ocupam pouca área do oceano e sustentam muitas espécies.", "c": "Ciência"}, {"e": "🧊", "t": "geleiras", "h": "Geleiras são rios de gelo lentos", "b": "Escorrem devagar por causa do próprio peso.", "c": "Ciência"}, {"e": "🦠", "t": "vacinas", "h": "Vacinas treinam o sistema imune", "b": "Mostram ao corpo como reconhecer um invasor sem causar a doença.", "c": "Ciência"}, {"e": "🩺", "t": "estetoscópio", "h": "O estetoscópio tem mais de duzentos anos", "b": "A ideia surgiu na França no início do século 19.", "c": "Ciência"}, {"e": "💊", "t": "antibióticos", "h": "Antibióticos não funcionam contra vírus", "b": "Eles atuam contra bactérias.", "c": "Ciência"}, {"e": "🧫", "t": "penicilina", "h": "A penicilina foi descoberta por acaso", "b": "Um fungo contaminou uma placa e matou as bactérias ao redor.", "c": "Ciência"}, {"e": "✨", "t": "constelações", "h": "Cada cultura desenhou o céu de um jeito", "b": "As mesmas estrelas formam figuras diferentes.", "c": "Ciência"}, {"e": "🌇", "t": "pôr do sol", "h": "O pôr do sol é avermelhado", "b": "O caminho longo da luz na atmosfera espalha o azul e deixa o vermelho.", "c": "Ciência"}, {"e": "🧵", "t": "algodão", "h": "O algodão vem de uma planta", "b": "As fibras ao redor da semente são fiadas e tecidas.", "c": "Ciência"}, {"e": "🧶", "t": "lã", "h": "A lã vem de pelos de animais", "b": "As ovelhas são as mais conhecidas.", "c": "Ciência"}, {"e": "🏗️", "t": "pontes", "h": "Pontes distribuem peso", "b": "O formato ajuda a espalhar a carga pelos apoios.", "c": "Ciência"}, {"e": "🚢", "t": "navios", "h": "Navios gigantes flutuam", "b": "Eles deslocam água suficiente para igualar o próprio peso.", "c": "Ciência"}, {"e": "✈️", "t": "aviões", "h": "Aviões voam por causa da forma da asa", "b": "O ar que passa por cima e por baixo cria uma força para cima.", "c": "Ciência"}, {"e": "🚲", "t": "bicicletas", "h": "Bicicletas se equilibram melhor em movimento", "b": "Parada é difícil. Andando, o guidão ajuda a corrigir o equilíbrio.", "c": "Ciência"}, {"e": "🚆", "t": "trens", "h": "Trens de alta velocidade são comuns na Ásia e na Europa", "b": "Ligam grandes cidades em pouco tempo.", "c": "Ciência"}];
+var RESERVA = ["zebras", "girassóis", "aurora boreal", "bambu", "pandas", "iglus", "sorvete", "faróis", "pirarucu", "cerâmica", "moinhos de vento", "fósseis", "lagostas", "xilofone", "paraquedas", "origami", "mamutes", "tapioca", "cavalos-marinhos", "canoas"];
+var ENDPOINT = "";            // cole aqui o endereço do Google Apps Script (ver README)
+
+var Q = new URLSearchParams(location.search);
+var LIMITE_MS = (+Q.get("t") || 300) * 1000;   // tempo ativo máximo de feed
+var CADA = +Q.get("p") || 15;                  // pausa a cada N posts (versão B)
+var PAUSA_S = +Q.get("ps") || 6;               // duração mínima da pausa
+var VISTO_MS = 700;                            // tempo mínimo na tela para contar como visto
+var HUE = {Natureza:150,"Espaço":255,Corpo:345,"História":28,Comida:12,Tecnologia:215,"Música":285,Esporte:175,Humor:42,Dica:95,"Ciência":195};
+
+function $(id){return document.getElementById(id);}
+function mostra(id){
+  var ts=document.querySelectorAll(".tela"); for(var i=0;i<ts.length;i++) ts[i].classList.remove("ativa");
+  $("feed").classList.remove("ativa");
+  $(id).classList.add("ativa"); window.scrollTo(0,0);
+}
+function rng(seed){var a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function embaralha(arr,r){var a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(r()*(i+1));var x=a[i];a[i]=a[j];a[j]=x;}return a;}
+function guarda(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+
+var S = {n:0,cond:"A",ordem:[],dwell:[],alcancado:[],atual:-1,entrou:0,ativoMs:0,ultimo:0,
+         pausado:false,rodando:false,pausas:0,pausaMs:[],pausaIni:0,motivo:"",tick:null,pausaTimer:null,
+         vistos:[],reais:[],iscas:[],opcoes:[],res:null};
+
+/* ---------- entrada ---------- */
+$("comecar").onclick=function(){
+  var v=parseInt($("num").value,10);
+  if(!(v>=0)||isNaN(v)){$("erro-num").textContent="Digite o número que você recebeu.";return;}
+  S.n=v;
+  var c=(Q.get("c")||"").toUpperCase();
+  S.cond=(c==="A"||c==="B")?c:(v%2===1?"A":"B");
+  comecaFeed();
+};
+$("num").addEventListener("keydown",function(e){if(e.key==="Enter")$("comecar").click();});
+
+/* ---------- feed ---------- */
+function comecaFeed(){
+  var r=rng(S.n*7919+13);
+  var idx=[];for(var i=0;i<CARDS.length;i++)idx.push(i);
+  S.ordem=embaralha(idx,r);
+  S.dwell=CARDS.map(function(){return 0;});
+  S.alcancado=CARDS.map(function(){return false;});
+  var rolo=$("rolo");rolo.innerHTML="";rolo.scrollTop=0;
+  S.ordem.forEach(function(ci,pos){
+    var c=CARDS[ci],d=document.createElement("article");
+    d.className="card";d.dataset.ci=ci;d.style.setProperty("--h",HUE[c.c]||200);
+    var t=document.createElement("div");t.className="tag";t.textContent=c.c;
+    var e=document.createElement("div");e.className="emo";e.textContent=c.e;
+    var h=document.createElement("h2");h.textContent=c.h;
+    var p=document.createElement("p");p.textContent=c.b;
+    d.appendChild(t);d.appendChild(e);d.appendChild(h);d.appendChild(p);
+    if(pos===0){var k=document.createElement("div");k.className="dica";k.textContent="Deslize para cima";d.appendChild(k);}
+    rolo.appendChild(d);
+  });
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(en){
+      var ci=+en.target.dataset.ci;
+      if(en.intersectionRatio>=0.6){ if(S.atual!==ci) entra(ci); }
+      else if(S.atual===ci){ fecha(); }
+    });
+  },{root:rolo,threshold:[0.6]});
+  Array.prototype.forEach.call(rolo.children,function(el){io.observe(el);});
+  S.io=io;
+  S.rodando=true;S.pausado=false;S.ativoMs=0;S.pausas=0;S.pausaMs=[];S.atual=-1;S.entrou=0;
+  S.ultimo=performance.now();
+  $("feed").classList.add("ativa");
+  ["t-entrada"].forEach(function(id){$(id).classList.remove("ativa");});
+  S.tick=setInterval(passo,250);
+}
+function fecha(){
+  if(S.atual>=0&&S.entrou){S.dwell[S.atual]+=performance.now()-S.entrou;}
+  S.entrou=0;
+}
+function entra(ci){
+  fecha();
+  S.atual=ci;S.entrou=performance.now();
+  if(!S.alcancado[ci]){
+    S.alcancado[ci]=true;
+    var n=S.alcancado.filter(Boolean).length;
+    if(S.cond==="B"&&n>1&&(n-1)%CADA===0) abrePausa();
+  }
+}
+function passo(){
+  var agora=performance.now(),dt=agora-S.ultimo;S.ultimo=agora;
+  if(!S.rodando) return;
+  if(document.visibilityState!=="visible"){ if(S.entrou){fecha();} return; }
+  if(S.atual>=0&&!S.entrou&&!S.pausado){S.entrou=agora;}
+  if(!S.pausado){
+    S.ativoMs+=Math.min(dt,1000);
+    if(S.ativoMs>=LIMITE_MS) termina("tempo");
+  }
+}
+$("termina").onclick=function(){termina("botao");};
+
+/* ---------- pausa (versão B) ---------- */
+function abrePausa(){
+  S.pausado=true;S.pausas++;S.pausaIni=performance.now();fecha();
+  $("rolo").classList.add("travado");
+  var seg=PAUSA_S;$("pausa-n").textContent=seg;$("pausa-ok").disabled=true;
+  $("pausa").classList.add("ativa");
+  clearInterval(S.pausaTimer);
+  S.pausaTimer=setInterval(function(){
+    seg--;
+    if(seg>0){$("pausa-n").textContent=seg;}
+    else{$("pausa-n").textContent="";$("pausa-ok").disabled=false;clearInterval(S.pausaTimer);}
+  },1000);
+}
+function fechaPausa(){
+  clearInterval(S.pausaTimer);
+  S.pausaMs.push(Math.round(performance.now()-S.pausaIni));
+  $("pausa").classList.remove("ativa");$("rolo").classList.remove("travado");
+  S.pausado=false;S.ultimo=performance.now();S.entrou=performance.now();
+}
+$("pausa-ok").onclick=fechaPausa;
+$("pausa-fim").onclick=function(){
+  clearInterval(S.pausaTimer);
+  S.pausaMs.push(Math.round(performance.now()-S.pausaIni));
+  $("pausa").classList.remove("ativa");$("rolo").classList.remove("travado");
+  S.pausado=false;termina("botao");
+};
+
+/* ---------- fim do feed ---------- */
+function termina(motivo){
+  if(!S.rodando)return;
+  S.rodando=false;S.motivo=motivo;clearInterval(S.tick);clearInterval(S.pausaTimer);
+  if(S.pausado&&S.pausaIni){S.pausaMs.push(Math.round(performance.now()-S.pausaIni));}
+  fecha();
+  if(S.io)S.io.disconnect();
+  $("pausa").classList.remove("ativa");$("rolo").classList.remove("travado");
+  // posts vistos, na ordem em que apareceram
+  S.vistos=S.ordem.filter(function(ci){return S.dwell[ci]>=VISTO_MS;});
+  monta4();
+  mostra("t-q1");
+}
+
+/* ---------- perguntas ---------- */
+$("q1-ok").onclick=function(){
+  var v=parseInt($("est").value,10);
+  if(isNaN(v)||v<0){$("erro-est").textContent="Digite um número (um palpite serve).";return;}
+  $("erro-est").textContent="";S.estimativa=v;mostra("t-q2");
+};
+$("q2-ok").onclick=function(){
+  S.livre=Array.prototype.map.call(document.querySelectorAll(".livre"),function(i){return i.value.trim();}).filter(Boolean);
+  mostra("t-q3");
+};
+$("q3-ok").onclick=function(){
+  var r=document.querySelector("input[name=sent]:checked");
+  if(!r){$("erro-sent").textContent="Escolha uma opção.";return;}
+  S.sent=r.value;$("erro-sent").textContent="";mostra("t-q4");
+};
+
+function monta4(){
+  var seen=S.vistos,R=Math.min(8,seen.length),reais=[];
+  for(var k=0;k<R;k++){reais.push(seen[Math.floor((k+0.5)*seen.length/R)]);}   // espalhados ao longo da sessão
+  var r=rng(S.n*104729+7);
+  var naoAlc=[];for(var i=0;i<CARDS.length;i++){if(!S.alcancado[i])naoAlc.push(i);}
+  var iscas=embaralha(naoAlc,r).slice(0,R).map(function(ci){return CARDS[ci].t;});
+  var falta=R-iscas.length;
+  if(falta>0){iscas=iscas.concat(embaralha(RESERVA,r).slice(0,falta));}
+  S.reais=reais.map(function(ci){return CARDS[ci].t;});S.iscas=iscas;
+  var todos=embaralha(S.reais.map(function(t){return{t:t,real:true};}).concat(iscas.map(function(t){return{t:t,real:false};})),r);
+  S.opcoes=todos;
+  var box=$("lista");box.innerHTML="";
+  if(todos.length===0){var m=document.createElement("p");m.className="fraca";m.textContent="Nenhum post chegou a aparecer por tempo suficiente, então não há o que marcar.";box.appendChild(m);}
+  todos.forEach(function(o,i){
+    var l=document.createElement("label");l.className="opcao";
+    var inp=document.createElement("input");inp.type="checkbox";inp.value=i;
+    var sp=document.createElement("span");sp.textContent="Um post sobre "+o.t;
+    l.appendChild(inp);l.appendChild(sp);box.appendChild(l);
+  });
+}
+$("q4-ok").onclick=function(){
+  var marcados={};Array.prototype.forEach.call(document.querySelectorAll("#lista input:checked"),function(i){marcados[i.value]=true;});
+  var hits=0,fa=0;
+  S.opcoes.forEach(function(o,i){if(marcados[i]){if(o.real)hits++;else fa++;}});
+  S.res={hits:hits,fa:fa,R:S.reais.length,D:S.iscas.length};
+  resultado();
+};
+
+/* ---------- resultado e envio ---------- */
+function resultado(){
+  var R=S.res,vistos=S.vistos.length;
+  var linhas=[
+    ["Posts que a página contou como vistos",vistos],
+    ["Posts que você estimou",S.estimativa],
+    ["Posts reais que você reconheceu",R.R? R.hits+" de "+R.R : "—"],
+    ["Posts que não apareceram e você marcou",R.D? R.fa+" de "+R.D : "—"],
+    ["Tempo de uso (sem contar pausas)",Math.round(S.ativoMs/1000)+" s"]
+  ];
+  var t=$("tab");t.innerHTML="";
+  linhas.forEach(function(l){var tr=document.createElement("tr");var a=document.createElement("td");a.textContent=l[0];var b=document.createElement("td");b.textContent=l[1];tr.appendChild(a);tr.appendChild(b);t.appendChild(tr);});
+  $("versao").textContent = S.cond==="B"
+    ? "Você usou a versão COM pausas: uma pausa de "+PAUSA_S+(PAUSA_S===1?" segundo":" segundos")+" a cada "+CADA+" posts. Você passou por "+S.pausas+(S.pausas===1?" pausa.":" pausas.")
+    : "Você usou a versão SEM pausas: scroll livre, sem nenhum aviso.";
+  mostra("t-res");
+  var rec={n:S.n,cond:S.cond,ts:new Date().toISOString(),ativo_s:Math.round(S.ativoMs/1000),motivo:S.motivo,
+    alcancados:S.alcancado.filter(Boolean).length,vistos:vistos,estimativa:S.estimativa,sentimento:S.sent,
+    reconhecidos:R.hits,reais:R.R,falsos_marcados:R.fa,iscas:R.D,pausas:S.pausas,
+    pausa_media_ms:S.pausaMs.length?Math.round(S.pausaMs.reduce(function(a,b){return a+b;},0)/S.pausaMs.length):"",
+    livre:S.livre.join(" / "),temas_reais:S.reais.join(", "),temas_marcados:S.opcoes.filter(function(o,i){return document.querySelector("#lista input[value='"+i+"']").checked;}).map(function(o){return o.t;}).join(", ")};
+  S.rec=rec;guarda("feed_resultado",JSON.stringify(rec));
+  var env=$("envio");
+  if(!ENDPOINT){env.textContent="As respostas ficaram só neste aparelho.";return;}
+  env.textContent="Enviando…";
+  try{
+    fetch(ENDPOINT,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(rec)})
+      .then(function(){env.textContent="Respostas enviadas. Obrigado!";})
+      .catch(function(){env.textContent="Não consegui enviar. Use o botão abaixo e passe o resultado a quem conduz.";});
+  }catch(e){env.textContent="Não consegui enviar. Use o botão abaixo.";}
+}
+$("copiar").onclick=function(){
+  var txt=JSON.stringify(S.rec||{});
+  var ok=function(){$("copiar").textContent="Copiado";};
+  try{navigator.clipboard.writeText(txt).then(ok,function(){window.prompt("Copie:",txt);});}
+  catch(e){window.prompt("Copie:",txt);}
+};
+})();
+</script>
+</body></html>

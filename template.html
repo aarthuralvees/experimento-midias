@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Feed de curiosidades</title>
+<style>
+:root{--bg:#faf8f5;--tinta:#1d1b18;--fraca:#6b655c;--linha:#ddd6ca;--caixa:#fff;--acento:#2b5a84;--acentoTxt:#fff}
+@media(prefers-color-scheme:dark){:root{--bg:#14130f;--tinta:#e8e3d9;--fraca:#9a9387;--linha:#302c25;--caixa:#1b1a16;--acento:#7fb0dc;--acentoTxt:#10202e}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--tinta);font:17px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-text-size-adjust:100%}
+.tela{display:none;max-width:34rem;margin:0 auto;padding:2.2rem 18px 4rem}
+.tela.ativa{display:block}
+h1{font-size:1.65rem;line-height:1.2;margin:0 0 .8rem}
+h2{font-size:1.25rem;line-height:1.3;margin:0 0 .6rem}
+p{margin:0 0 .9rem}
+.fraca{color:var(--fraca);font-size:.92rem}
+.caixa{background:var(--caixa);border:1px solid var(--linha);border-radius:12px;padding:14px 16px;margin:0 0 1rem}
+input[type=number],input[type=text]{width:100%;font:inherit;padding:12px 14px;border:1px solid var(--linha);border-radius:10px;background:var(--caixa);color:var(--tinta);margin:.2rem 0 .8rem}
+button{font:inherit;font-weight:600;min-height:48px;padding:12px 20px;border:0;border-radius:12px;background:var(--acento);color:var(--acentoTxt);cursor:pointer;width:100%}
+button.sec{background:transparent;color:var(--fraca);border:1px solid var(--linha);font-weight:500}
+button:disabled{opacity:.4;cursor:default}
+.erro{color:#b3261e;font-size:.92rem;min-height:1.2em;margin:0 0 .6rem}
+.opcao{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--linha);border-radius:10px;background:var(--caixa);margin:0 0 8px;cursor:pointer}
+.opcao input{margin-top:.3rem;width:20px;height:20px;flex:0 0 auto}
+.passo{font-size:.82rem;letter-spacing:.04em;text-transform:uppercase;color:var(--fraca);margin:0 0 .5rem}
+table{border-collapse:collapse;width:100%;margin:0 0 1rem}
+td{padding:8px 4px;border-bottom:1px solid var(--linha);vertical-align:top}
+td:last-child{text-align:right;font-weight:600}
+
+#feed{position:fixed;inset:0;display:none;background:#000}
+#feed.ativa{display:block}
+#rolo{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;scrollbar-width:none}
+#rolo::-webkit-scrollbar{display:none}
+#rolo.travado{overflow-y:hidden}
+.card{height:100vh;height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;display:flex;flex-direction:column;justify-content:center;
+ padding:4.5rem 1.7rem 3rem;color:#fff;position:relative;
+ background:linear-gradient(165deg,hsl(var(--h) 52% 34%),hsl(calc(var(--h) + 28) 58% 20%))}
+.card .tag{align-self:flex-start;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;background:rgba(255,255,255,.16);padding:4px 10px;border-radius:99px;margin-bottom:1.3rem}
+.card .emo{font-size:4.2rem;line-height:1;margin-bottom:1.1rem}
+.card h2{font-size:1.65rem;line-height:1.2;margin:0 0 .8rem;color:#fff}
+.card p{font-size:1.15rem;line-height:1.5;margin:0;color:rgba(255,255,255,.93)}
+.card .dica{position:absolute;left:0;right:0;bottom:1.4rem;text-align:center;font-size:.85rem;color:rgba(255,255,255,.7)}
+#termina{position:fixed;top:max(12px,env(safe-area-inset-top));right:12px;z-index:5;width:auto;min-height:36px;padding:6px 14px;font-size:.9rem;font-weight:500;
+ background:rgba(0,0,0,.35);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:99px;display:none}
+#feed.ativa #termina{display:block}
+
+#pausa{position:fixed;inset:0;z-index:9;background:var(--bg);color:var(--tinta);display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem}
+#pausa.ativa{display:flex}
+#pausa h2{font-size:2rem;margin-bottom:.4rem}
+#pausa .n{font-size:3.4rem;font-weight:700;margin:.6rem 0 1.2rem;min-height:4rem}
+#pausa button{max-width:20rem}
+#pausa .sec{margin-top:.7rem}
+</style>
+</head>
+<body>
+
+<!-- 1. entrada -->
+<section id="t-entrada" class="tela ativa">
+  <h1>Feed de curiosidades</h1>
+  <p>Você vai rolar um feed de posts curtos, como faria no seu celular. <strong>Use do jeito que você usaria normalmente.</strong> Pode parar quando quiser tocando em <em>Terminar</em>, e a página encerra sozinha em no máximo 5 minutos.</p>
+  <p class="fraca">Depois vêm algumas perguntas rápidas. Não há resposta certa. A página não coleta nome nem dados pessoais: só o número abaixo e as suas respostas.</p>
+  <label for="num"><strong>Número que você recebeu</strong></label>
+  <input id="num" type="number" inputmode="numeric" min="1" step="1" autocomplete="off">
+  <div id="erro-num" class="erro" role="alert"></div>
+  <button id="comecar">Começar</button>
+</section>
+
+<!-- 2. feed -->
+<div id="feed">
+  <button id="termina" type="button">Terminar</button>
+  <div id="rolo"></div>
+</div>
+
+<!-- pausa -->
+<div id="pausa" role="dialog" aria-modal="true" aria-label="Pausa">
+  <h2>Pausa</h2>
+  <p class="fraca">Respire um instante. Você continua já.</p>
+  <div class="n" id="pausa-n">6</div>
+  <button id="pausa-ok" disabled>Continuar</button>
+  <button id="pausa-fim" class="sec">Terminar</button>
+</div>
+
+<!-- 3. perguntas -->
+<section id="t-q1" class="tela">
+  <p class="passo">Pergunta 1 de 4</p>
+  <h2>Quantos posts você acha que viu?</h2>
+  <p class="fraca">Um palpite. Não precisa ser exato.</p>
+  <input id="est" type="number" inputmode="numeric" min="0" step="1">
+  <div id="erro-est" class="erro" role="alert"></div>
+  <button id="q1-ok">Próxima</button>
+</section>
+
+<section id="t-q2" class="tela">
+  <p class="passo">Pergunta 2 de 4</p>
+  <h2>Do que você lembra?</h2>
+  <p class="fraca">Escreva, com as suas palavras, sobre até 4 posts que você viu. Pode deixar em branco o que não lembrar.</p>
+  <input class="livre" type="text" maxlength="160" placeholder="Post 1" autocomplete="off">
+  <input class="livre" type="text" maxlength="160" placeholder="Post 2" autocomplete="off">
+  <input class="livre" type="text" maxlength="160" placeholder="Post 3" autocomplete="off">
+  <input class="livre" type="text" maxlength="160" placeholder="Post 4" autocomplete="off">
+  <button id="q2-ok">Próxima</button>
+</section>
+
+<section id="t-q3" class="tela">
+  <p class="passo">Pergunta 3 de 4</p>
+  <h2>Você ficou mais, igual ou menos tempo do que gostaria?</h2>
+  <label class="opcao"><input type="radio" name="sent" value="menos"><span>Menos tempo do que eu queria</span></label>
+  <label class="opcao"><input type="radio" name="sent" value="igual"><span>Mais ou menos o que eu queria</span></label>
+  <label class="opcao"><input type="radio" name="sent" value="mais"><span>Mais tempo do que eu queria</span></label>
+  <div id="erro-sent" class="erro" role="alert"></div>
+  <button id="q3-ok">Próxima</button>
+</section>
+
+<section id="t-q4" class="tela">
+  <p class="passo">Pergunta 4 de 4</p>
+  <h2>Marque os posts que você viu</h2>
+  <p class="fraca">Marque só os que você acha que apareceram para você. Pode marcar quantos quiser, ou nenhum.</p>
+  <div id="lista"></div>
+  <button id="q4-ok">Ver resultado</button>
+</section>
+
+<!-- 4. resultado -->
+<section id="t-res" class="tela">
+  <h1>Resultado</h1>
+  <p class="fraca">Não existe resultado certo ou errado. Serve para conversarmos.</p>
+  <div class="caixa"><table id="tab"></table></div>
+  <div class="caixa" id="versao"></div>
+  <p class="fraca" id="envio"></p>
+  <button id="copiar" class="sec">Copiar meu resultado</button>
+</section>
+
+<script>
+(function(){
+"use strict";
+var CARDS = __CARDS__;
+var RESERVA = __RESERVA__;
+var ENDPOINT = "";            // cole aqui o endereço do Google Apps Script (ver README)
+
+var Q = new URLSearchParams(location.search);
+var LIMITE_MS = (+Q.get("t") || 300) * 1000;   // tempo ativo máximo de feed
+var CADA = +Q.get("p") || 15;                  // pausa a cada N posts (versão B)
+var PAUSA_S = +Q.get("ps") || 6;               // duração mínima da pausa
+var VISTO_MS = 700;                            // tempo mínimo na tela para contar como visto
+var HUE = {Natureza:150,"Espaço":255,Corpo:345,"História":28,Comida:12,Tecnologia:215,"Música":285,Esporte:175,Humor:42,Dica:95,"Ciência":195};
+
+function $(id){return document.getElementById(id);}
+function mostra(id){
+  var ts=document.querySelectorAll(".tela"); for(var i=0;i<ts.length;i++) ts[i].classList.remove("ativa");
+  $("feed").classList.remove("ativa");
+  $(id).classList.add("ativa"); window.scrollTo(0,0);
+}
+function rng(seed){var a=seed>>>0;return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function embaralha(arr,r){var a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(r()*(i+1));var x=a[i];a[i]=a[j];a[j]=x;}return a;}
+function guarda(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+
+var S = {n:0,cond:"A",ordem:[],dwell:[],alcancado:[],atual:-1,entrou:0,ativoMs:0,ultimo:0,
+         pausado:false,rodando:false,pausas:0,pausaMs:[],pausaIni:0,motivo:"",tick:null,pausaTimer:null,
+         vistos:[],reais:[],iscas:[],opcoes:[],res:null};
+
+/* ---------- entrada ---------- */
+$("comecar").onclick=function(){
+  var v=parseInt($("num").value,10);
+  if(!(v>=0)||isNaN(v)){$("erro-num").textContent="Digite o número que você recebeu.";return;}
+  S.n=v;
+  var c=(Q.get("c")||"").toUpperCase();
+  S.cond=(c==="A"||c==="B")?c:(v%2===1?"A":"B");
+  comecaFeed();
+};
+$("num").addEventListener("keydown",function(e){if(e.key==="Enter")$("comecar").click();});
+
+/* ---------- feed ---------- */
+function comecaFeed(){
+  var r=rng(S.n*7919+13);
+  var idx=[];for(var i=0;i<CARDS.length;i++)idx.push(i);
+  S.ordem=embaralha(idx,r);
+  S.dwell=CARDS.map(function(){return 0;});
+  S.alcancado=CARDS.map(function(){return false;});
+  var rolo=$("rolo");rolo.innerHTML="";rolo.scrollTop=0;
+  S.ordem.forEach(function(ci,pos){
+    var c=CARDS[ci],d=document.createElement("article");
+    d.className="card";d.dataset.ci=ci;d.style.setProperty("--h",HUE[c.c]||200);
+    var t=document.createElement("div");t.className="tag";t.textContent=c.c;
+    var e=document.createElement("div");e.className="emo";e.textContent=c.e;
+    var h=document.createElement("h2");h.textContent=c.h;
+    var p=document.createElement("p");p.textContent=c.b;
+    d.appendChild(t);d.appendChild(e);d.appendChild(h);d.appendChild(p);
+    if(pos===0){var k=document.createElement("div");k.className="dica";k.textContent="Deslize para cima";d.appendChild(k);}
+    rolo.appendChild(d);
+  });
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(en){
+      var ci=+en.target.dataset.ci;
+      if(en.intersectionRatio>=0.6){ if(S.atual!==ci) entra(ci); }
+      else if(S.atual===ci){ fecha(); }
+    });
+  },{root:rolo,threshold:[0.6]});
+  Array.prototype.forEach.call(rolo.children,function(el){io.observe(el);});
+  S.io=io;
+  S.rodando=true;S.pausado=false;S.ativoMs=0;S.pausas=0;S.pausaMs=[];S.atual=-1;S.entrou=0;
+  S.ultimo=performance.now();
+  $("feed").classList.add("ativa");
+  ["t-entrada"].forEach(function(id){$(id).classList.remove("ativa");});
+  S.tick=setInterval(passo,250);
+}
+function fecha(){
+  if(S.atual>=0&&S.entrou){S.dwell[S.atual]+=performance.now()-S.entrou;}
+  S.entrou=0;
+}
+function entra(ci){
+  fecha();
+  S.atual=ci;S.entrou=performance.now();
+  if(!S.alcancado[ci]){
+    S.alcancado[ci]=true;
+    var n=S.alcancado.filter(Boolean).length;
+    if(S.cond==="B"&&n>1&&(n-1)%CADA===0) abrePausa();
+  }
+}
+function passo(){
+  var agora=performance.now(),dt=agora-S.ultimo;S.ultimo=agora;
+  if(!S.rodando) return;
+  if(document.visibilityState!=="visible"){ if(S.entrou){fecha();} return; }
+  if(S.atual>=0&&!S.entrou&&!S.pausado){S.entrou=agora;}
+  if(!S.pausado){
+    S.ativoMs+=Math.min(dt,1000);
+    if(S.ativoMs>=LIMITE_MS) termina("tempo");
+  }
+}
+$("termina").onclick=function(){termina("botao");};
+
+/* ---------- pausa (versão B) ---------- */
+function abrePausa(){
+  S.pausado=true;S.pausas++;S.pausaIni=performance.now();fecha();
+  $("rolo").classList.add("travado");
+  var seg=PAUSA_S;$("pausa-n").textContent=seg;$("pausa-ok").disabled=true;
+  $("pausa").classList.add("ativa");
+  clearInterval(S.pausaTimer);
+  S.pausaTimer=setInterval(function(){
+    seg--;
+    if(seg>0){$("pausa-n").textContent=seg;}
+    else{$("pausa-n").textContent="";$("pausa-ok").disabled=false;clearInterval(S.pausaTimer);}
+  },1000);
+}
+function fechaPausa(){
+  clearInterval(S.pausaTimer);
+  S.pausaMs.push(Math.round(performance.now()-S.pausaIni));
+  $("pausa").classList.remove("ativa");$("rolo").classList.remove("travado");
+  S.pausado=false;S.ultimo=performance.now();S.entrou=performance.now();
+}
+$("pausa-ok").onclick=fechaPausa;
+$("pausa-fim").onclick=function(){
+  clearInterval(S.pausaTimer);
+  S.pausaMs.push(Math.round(performance.now()-S.pausaIni));
+  $("pausa").classList.remove("ativa");$("rolo").classList.remove("travado");
+  S.pausado=false;termina("botao");
+};
+
+/* ---------- fim do feed ---------- */
+function termina(motivo){
+  if(!S.rodando)return;
+  S.rodando=false;S.motivo=motivo;clearInterval(S.tick);clearInterval(S.pausaTimer);
+  if(S.pausado&&S.pausaIni){S.pausaMs.push(Math.round(performance.now()-S.pausaIni));}
+  fecha();
+  if(S.io)S.io.disconnect();
+  $("pausa").classList.remove("ativa");$("rolo").classList.remove("travado");
+  // posts vistos, na ordem em que apareceram
+  S.vistos=S.ordem.filter(function(ci){return S.dwell[ci]>=VISTO_MS;});
+  monta4();
+  mostra("t-q1");
+}
+
+/* ---------- perguntas ---------- */
+$("q1-ok").onclick=function(){
+  var v=parseInt($("est").value,10);
+  if(isNaN(v)||v<0){$("erro-est").textContent="Digite um número (um palpite serve).";return;}
+  $("erro-est").textContent="";S.estimativa=v;mostra("t-q2");
+};
+$("q2-ok").onclick=function(){
+  S.livre=Array.prototype.map.call(document.querySelectorAll(".livre"),function(i){return i.value.trim();}).filter(Boolean);
+  mostra("t-q3");
+};
+$("q3-ok").onclick=function(){
+  var r=document.querySelector("input[name=sent]:checked");
+  if(!r){$("erro-sent").textContent="Escolha uma opção.";return;}
+  S.sent=r.value;$("erro-sent").textContent="";mostra("t-q4");
+};
+
+function monta4(){
+  var seen=S.vistos,R=Math.min(8,seen.length),reais=[];
+  for(var k=0;k<R;k++){reais.push(seen[Math.floor((k+0.5)*seen.length/R)]);}   // espalhados ao longo da sessão
+  var r=rng(S.n*104729+7);
+  var naoAlc=[];for(var i=0;i<CARDS.length;i++){if(!S.alcancado[i])naoAlc.push(i);}
+  var iscas=embaralha(naoAlc,r).slice(0,R).map(function(ci){return CARDS[ci].t;});
+  var falta=R-iscas.length;
+  if(falta>0){iscas=iscas.concat(embaralha(RESERVA,r).slice(0,falta));}
+  S.reais=reais.map(function(ci){return CARDS[ci].t;});S.iscas=iscas;
+  var todos=embaralha(S.reais.map(function(t){return{t:t,real:true};}).concat(iscas.map(function(t){return{t:t,real:false};})),r);
+  S.opcoes=todos;
+  var box=$("lista");box.innerHTML="";
+  if(todos.length===0){var m=document.createElement("p");m.className="fraca";m.textContent="Nenhum post chegou a aparecer por tempo suficiente, então não há o que marcar.";box.appendChild(m);}
+  todos.forEach(function(o,i){
+    var l=document.createElement("label");l.className="opcao";
+    var inp=document.createElement("input");inp.type="checkbox";inp.value=i;
+    var sp=document.createElement("span");sp.textContent="Um post sobre "+o.t;
+    l.appendChild(inp);l.appendChild(sp);box.appendChild(l);
+  });
+}
+$("q4-ok").onclick=function(){
+  var marcados={};Array.prototype.forEach.call(document.querySelectorAll("#lista input:checked"),function(i){marcados[i.value]=true;});
+  var hits=0,fa=0;
+  S.opcoes.forEach(function(o,i){if(marcados[i]){if(o.real)hits++;else fa++;}});
+  S.res={hits:hits,fa:fa,R:S.reais.length,D:S.iscas.length};
+  resultado();
+};
+
+/* ---------- resultado e envio ---------- */
+function resultado(){
+  var R=S.res,vistos=S.vistos.length;
+  var linhas=[
+    ["Posts que a página contou como vistos",vistos],
+    ["Posts que você estimou",S.estimativa],
+    ["Posts reais que você reconheceu",R.R? R.hits+" de "+R.R : "—"],
+    ["Posts que não apareceram e você marcou",R.D? R.fa+" de "+R.D : "—"],
+    ["Tempo de uso (sem contar pausas)",Math.round(S.ativoMs/1000)+" s"]
+  ];
+  var t=$("tab");t.innerHTML="";
+  linhas.forEach(function(l){var tr=document.createElement("tr");var a=document.createElement("td");a.textContent=l[0];var b=document.createElement("td");b.textContent=l[1];tr.appendChild(a);tr.appendChild(b);t.appendChild(tr);});
+  $("versao").textContent = S.cond==="B"
+    ? "Você usou a versão COM pausas: uma pausa de "+PAUSA_S+(PAUSA_S===1?" segundo":" segundos")+" a cada "+CADA+" posts. Você passou por "+S.pausas+(S.pausas===1?" pausa.":" pausas.")
+    : "Você usou a versão SEM pausas: scroll livre, sem nenhum aviso.";
+  mostra("t-res");
+  var rec={n:S.n,cond:S.cond,ts:new Date().toISOString(),ativo_s:Math.round(S.ativoMs/1000),motivo:S.motivo,
+    alcancados:S.alcancado.filter(Boolean).length,vistos:vistos,estimativa:S.estimativa,sentimento:S.sent,
+    reconhecidos:R.hits,reais:R.R,falsos_marcados:R.fa,iscas:R.D,pausas:S.pausas,
+    pausa_media_ms:S.pausaMs.length?Math.round(S.pausaMs.reduce(function(a,b){return a+b;},0)/S.pausaMs.length):"",
+    livre:S.livre.join(" / "),temas_reais:S.reais.join(", "),temas_marcados:S.opcoes.filter(function(o,i){return document.querySelector("#lista input[value='"+i+"']").checked;}).map(function(o){return o.t;}).join(", ")};
+  S.rec=rec;guarda("feed_resultado",JSON.stringify(rec));
+  var env=$("envio");
+  if(!ENDPOINT){env.textContent="As respostas ficaram só neste aparelho.";return;}
+  env.textContent="Enviando…";
+  try{
+    fetch(ENDPOINT,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(rec)})
+      .then(function(){env.textContent="Respostas enviadas. Obrigado!";})
+      .catch(function(){env.textContent="Não consegui enviar. Use o botão abaixo e passe o resultado a quem conduz.";});
+  }catch(e){env.textContent="Não consegui enviar. Use o botão abaixo.";}
+}
+$("copiar").onclick=function(){
+  var txt=JSON.stringify(S.rec||{});
+  var ok=function(){$("copiar").textContent="Copiado";};
+  try{navigator.clipboard.writeText(txt).then(ok,function(){window.prompt("Copie:",txt);});}
+  catch(e){window.prompt("Copie:",txt);}
+};
+})();
+</script>
+</body></html>
